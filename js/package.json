@@ -1,0 +1,22 @@
+{
+  "name": "mnemos",
+  "version": "0.0.1",
+  "description": "Autonomous codebase investigation framework with persistent memory",
+  "main": "index.js",
+  "keywords": ["investigation", "autonomous", "codebase", "analysis", "memory"],
+  "author": {
+    "name": "Tyson Chan",
+    "email": "tyson.chan@proton.me",
+    "url": "https://github.com/iteebz"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/iteebz/mnemos.git"
+  },
+  "bugs": {
+    "url": "https://github.com/iteebz/mnemos/issues"
+  },
+  "homepage": "https://github.com/iteebz/mnemos#readme",
+  "license": "MIT",
+  "private": false
+}

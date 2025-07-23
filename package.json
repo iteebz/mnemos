@@ -1,0 +1,16 @@
+{
+  "name": "mnemos-workspace",
+  "version": "0.2.0",
+  "private": true,
+  "workspaces": [
+    "js"
+  ],
+  "scripts": {
+    "dev": "cd js && npm run dev",
+    "build": "cd js && npm run build",
+    "test": "cd js && npm test"
+  },
+  "devDependencies": {
+    "pnpm": "^8.0.0"
+  }
+}
