@@ -15,6 +15,7 @@ FILES: PROTOCOL.md (methodology), README.md (overview), .mnemos/findings.jsonl (
 """
 
 import os
+import sys
 from pathlib import Path
 from typing import Dict, Any
 
@@ -59,8 +60,11 @@ class Mnemos:
                 mnemos_dir = parent / '.mnemos'
                 return str(mnemos_dir), 'memory'
         
-        # Fallback to user home if no git repo found
-        return str(Path.home() / '.mnemos'), 'global'
+        # Security: Prevent context leakage - require git repo
+        print("❌ MNEMOS ERROR: Not in a git repository")
+        print("   Mnemos requires a git repo to prevent context leakage between projects")
+        print("   Navigate to a git repository or run 'git init' to create one")
+        sys.exit(1)
     
     # Delegate to modular components
     def observation(self, what: str, context: str = ""):
@@ -171,6 +175,28 @@ class Mnemos:
                 print(f"  • {pattern['pattern']} → {pattern['outcome'].get('type', 'success')}")
         
         return patterns
+    
+    def momentum(self):
+        """Show investigation momentum suggestions based on behavioral patterns."""
+        suggestions = self.patterns.get_momentum_suggestions()
+        
+        if not suggestions:
+            print("🚀 No momentum patterns detected yet. Continue investigating to build behavioral data!")
+            return []
+        
+        print("🚀 INVESTIGATION MOMENTUM SUGGESTIONS")
+        print("=" * 40)
+        print("Based on your historical patterns, consider investigating:")
+        print()
+        
+        for i, suggestion in enumerate(suggestions, 1):
+            confidence_emoji = "🔥" if suggestion['confidence'] > 0.7 else "⚡" if suggestion['confidence'] > 0.4 else "💡"
+            print(f"{confidence_emoji} {i}. {suggestion['suggestion']}")
+            print(f"   {suggestion['rationale']}")
+            print(f"   Confidence: {suggestion['confidence']:.0%} | Frequency: {suggestion['frequency']}x")
+            print()
+        
+        return suggestions
     
     def init(self):
         """Initialize Claude with full mnemos context and current status."""

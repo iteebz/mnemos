@@ -51,7 +51,8 @@ def process_chained_commands(mnemos, chain_args):
 def main():
     """Claude-friendly mnemos CLI interface."""
     if len(sys.argv) < 2:
-        show_help()
+        # Auto-initialize with full context - perfect Claude entry point
+        auto_initialize()
         return
     
     # Check for --verbose flag
@@ -163,6 +164,10 @@ def main():
     elif command in ['?', 'next', 'suggest']:
         show_suggestions(mnemos)
         
+    elif command in ['momentum', 'flow']:
+        suggestions = mnemos.momentum()
+        # Output already handled by momentum() method
+        
     elif command in ['search', 'find', 'query']:
         if len(sys.argv) < 3:
             print("Usage: mnemos search <term> [--type TYPE] [--limit N]")
@@ -183,11 +188,14 @@ def main():
         show_search_results(results, search_term)
         
     elif command in ['init']:
-        init_message = mnemos.init()
-        print(init_message)
+        # Redirect to auto-initialize for consistency
+        auto_initialize()
         
     else:
-        show_help()
+        # Unknown command - show auto-initialize instead of help
+        print(f"❓ Unknown command '{command}' - showing mnemos overview:")
+        print()
+        auto_initialize()
 
 
 def show_rich_summary(mnemos):
@@ -276,45 +284,74 @@ def show_suggestions(mnemos):
     print(f"{count}. Start new investigation: mnemos start <topic>")
 
 
-def show_help():
-    """Show beautiful help for Claude."""
-    print("""
-🤖 MNEMOS - Beautiful Investigation CLI
+def auto_initialize():
+    """Perfect Claude entry point - auto-initialize with full context and suggestions."""
+    mnemos = Mnemos()
+    
+    print("🧠 MNEMOS - Autonomous Investigation System")
+    print("=" * 45)
+    
+    # Show current investigation context
+    show_rich_summary(mnemos)
+    
+    # Show momentum suggestions
+    print("\n🚀 MOMENTUM SUGGESTIONS")
+    print("-" * 25)
+    suggestions = mnemos.momentum()
+    
+    if not suggestions:
+        print("🔄 Building behavioral patterns... Continue investigating to unlock momentum suggestions!")
+    
+    print("\n💡 ESSENTIAL COMMANDS")
+    print("-" * 20)
+    print("  mnemos o \"observation\"     Log what you see")
+    print("  mnemos i \"insight\"         Log what it means")
+    print("  mnemos d \"discovery\"       Log breakthrough")
+    print("  mnemos x \"problem\"         Log issue/bug")
+    print("  mnemos r <id> \"solution\"   Resolve issue")
+    print("  mnemos search \"term\"       Search memory")
+    print("  mnemos momentum            Get next suggestions")
+    
+    print("\n🎯 Ready for autonomous investigation!")
 
-TACTICAL INVESTIGATION:
-  mnemos o "observation"     Log what you see
-  mnemos i "insight"         Log what it means  
-  mnemos d "discovery"       Log breakthrough
-  mnemos x "problem"         Log issue/bug
-  mnemos r <id> "solution"   Resolve issue
-  mnemos c "idea"            Future consideration
 
-STRATEGIC MEMORY:
-  mnemos pattern "insight"   Architectural pattern
-  mnemos principle "rule"    Design principle
-  mnemos antipattern "bad"   Thing to avoid
+def show_search_results(results, search_term):
+    """Display search results with beautiful formatting."""
+    if not results:
+        print(f"🔍 No results found for '{search_term}'")
+        return
+    
+    print(f"\n🔍 SEARCH RESULTS: '{search_term}' ({len(results)} matches)")
+    print("=" * 50)
+    
+    for result in results:
+        entry_type = result.get('type', 'unknown')
+        timestamp = result.get('timestamp', 'unknown')
+        entry_id = result.get('id', 'unknown')
+        
+        # Type-specific formatting
+        if entry_type == 'observation':
+            what = result.get('what', '')[:70]
+            print(f"👁️  [{entry_id}] {timestamp} | {what}{'...' if len(result.get('what', '')) > 70 else ''}")
+        elif entry_type == 'insight':
+            understanding = result.get('understanding', '')[:70]
+            print(f"💡 [{entry_id}] {timestamp} | {understanding}{'...' if len(result.get('understanding', '')) > 70 else ''}")
+        elif entry_type == 'discovery':
+            breakthrough = result.get('breakthrough', '')[:70]
+            print(f"🎯 [{entry_id}] {timestamp} | {breakthrough}{'...' if len(result.get('breakthrough', '')) > 70 else ''}")
+        elif entry_type == 'issue':
+            problem = result.get('problem', '')[:70]
+            status = result.get('status', 'unknown')
+            print(f"🐛 [{entry_id}] {timestamp} | {status.upper()} | {problem}{'...' if len(result.get('problem', '')) > 70 else ''}")
+        elif entry_type == 'consideration':
+            idea = result.get('idea', '')[:70]
+            print(f"💭 [{entry_id}] {timestamp} | {idea}{'...' if len(result.get('idea', '')) > 70 else ''}")
+        else:
+            # Generic fallback
+            content = str(result)[:70]
+            print(f"📄 [{entry_id}] {timestamp} | {content}{'...' if len(str(result)) > 70 else ''}")
 
-INVESTIGATION FLOW:
-  mnemos start "topic"       Begin investigation
-  mnemos done "topic"        Complete investigation  
-  mnemos status              Show current state
-  mnemos reflect             Meta-analysis
-  mnemos compress            Semantic compression
-  mnemos ?                   What to investigate next
 
-ALIASES:
-  o/obs = observation, i = insight, d = discovery
-  x = issue, r = resolve, c = consideration, ? = suggest
-
-FLAGS:
-  --verbose, -v              Show memory locations
-
-Claude-optimized for zero-ceremony autonomous investigation! 🔍
-
-ENVIRONMENT:
-  MNEMOS_HOME=~/workspace/.mnemos  # Unified polyrepo memory
-  (defaults to local .mnemos)      # Per-project memory
-""")
 
 
 if __name__ == "__main__":
