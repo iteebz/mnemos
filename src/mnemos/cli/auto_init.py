@@ -18,6 +18,11 @@ def auto_initialize():
     # Show current investigation context
     show_rich_summary(mnemos)
     
+    # Smart memory surfacing first - proactive context
+    print("\n🧠 SMART CONTEXT SURFACING")
+    print("-" * 28)
+    memory_result = mnemos.surface_memory()
+    
     # Show momentum suggestions
     print("\n🚀 MOMENTUM SUGGESTIONS")
     print("-" * 25)
@@ -33,8 +38,9 @@ def auto_initialize():
     print("  mnemos d \"discovery\"       Log breakthrough")
     print("  mnemos x \"problem\"         Log issue/bug")
     print("  mnemos r <id> \"solution\"   Resolve issue")
+    print("  mnemos surface \"context\"   Smart memory surfacing")
+    print("  mnemos ?                   Smart suggestions + momentum")
     print("  mnemos search \"term\"       Search memory")
-    print("  mnemos momentum            Get next suggestions")
     
     print("\n🎯 Ready for autonomous investigation!")
 

@@ -247,6 +247,22 @@ def undo_cmd(args: List[str]):
         print("❌ UNDO: No entries to remove")
 
 
+@registry.command('surface', aliases=['smart', 'brain'], help_text="Smart memory surfacing - proactive context")
+def surface_cmd(args: List[str]):
+    context = ' '.join(args) if args else None
+    registry.mnemos.surface_memory(context)
+
+
+@registry.command('?', aliases=['suggest', 'next'], help_text="Investigation suggestions")
+def suggest_cmd(args: List[str]):
+    # First show smart memory surfacing
+    registry.mnemos.surface_memory()
+    print()
+    
+    # Then show momentum suggestions
+    registry.mnemos.momentum()
+
+
 def process_chained_commands(chain_args: List[str]) -> bool:
     """Process chained commands like 'o:observation' 'i:insight' 'd:discovery'."""
     results = []

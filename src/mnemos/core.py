@@ -17,13 +17,14 @@ FILES: PROTOCOL.md (methodology), README.md (overview), .mnemos/findings.jsonl (
 import os
 import sys
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, List
 
 from .logging import MnemosLogger  
 from .analysis import MnemosAnalyzer
 from .compression import MnemosCompressor
 from .memory_manager import AutoCompressionIntegration
 from .patterns import BehavioralPatterns
+from .patterns.surfacing import MemorySurface
 from .protocols import PROTOCOL, METHODOLOGY, BOUNDARIES, INIT_MESSAGE
 
 
@@ -50,6 +51,7 @@ class Mnemos:
         self.compressor = MnemosCompressor(self.log_file)
         self.memory_manager = AutoCompressionIntegration(self.log_file, self.compressor)
         self.patterns = BehavioralPatterns(self.log_file)
+        self.surface = MemorySurface(self.log_file)
     
     def _find_mnemos_root(self):
         """Git-linked memory: .mnemos alongside .git for natural project boundaries"""
@@ -254,6 +256,103 @@ class Mnemos:
             print()
         
         return suggestions
+    
+    def surface_memory(self, context: str = None) -> Dict[str, Any]:
+        """Proactively surface relevant memory based on current investigation context."""
+        result = self.surface.surface_relevant_memory(context)
+        
+        if result['status'] == 'surfaced':
+            print("🧠 SMART MEMORY SURFACING")
+            print("=" * 30)
+            
+            # Show proactive insights first
+            if result['proactive_insights']:
+                print("💡 PROACTIVE INSIGHTS:")
+                for insight in result['proactive_insights']:
+                    print(f"   {insight}")
+                print()
+            
+            # Show relevant findings
+            if result['relevant_findings']:
+                print(f"📚 RELEVANT MEMORY ({len(result['relevant_findings'])} findings):")
+                for i, finding in enumerate(result['relevant_findings'], 1):
+                    entry = finding['entry']
+                    entry_type = entry.get('type', 'unknown')
+                    timestamp = entry.get('timestamp', 'unknown')
+                    relevance = finding['relevance_score']
+                    
+                    # Type-specific content extraction
+                    content = ""
+                    if entry_type == 'discovery':
+                        content = entry.get('breakthrough', '')[:60]
+                    elif entry_type == 'insight':
+                        content = entry.get('understanding', '')[:60] 
+                    elif entry_type == 'observation':
+                        content = entry.get('what', '')[:60]
+                    elif entry_type == 'issue':
+                        content = entry.get('problem', '')[:60]
+                    elif entry_type == 'resolved':
+                        content = entry.get('solution', '')[:60]
+                    elif entry_type == 'pattern':
+                        content = entry.get('insight', '')[:60]
+                    else:
+                        # Generic fallback
+                        for field in ['what', 'understanding', 'breakthrough', 'problem', 'idea']:
+                            if field in entry:
+                                content = entry[field][:60]
+                                break
+                    
+                    # Format with emoji
+                    type_emoji = {
+                        'discovery': '🎯', 'insight': '💡', 'observation': '👁️',
+                        'issue': '🐛', 'resolved': '✅', 'pattern': '🏗️',
+                        'principle': '📏', 'consideration': '💭'
+                    }.get(entry_type, '📄')
+                    
+                    print(f"   {type_emoji} [{entry.get('id', 'unknown')[:8]}] {content}{'...' if len(content) >= 60 else ''}")
+                    print(f"     Relevance: {relevance:.0%} | {timestamp}")
+                    
+                    # Show top relevance reason
+                    if finding['relevance_reasons']:
+                        print(f"     Why: {finding['relevance_reasons'][0]}")
+                    print()
+            
+            confidence = result['surfacing_confidence']
+            confidence_emoji = "🔥" if confidence > 0.7 else "⚡" if confidence > 0.4 else "💡"
+            print(f"{confidence_emoji} Surfacing confidence: {confidence:.0%}")
+            
+        elif result['status'] == 'no_relevant_memory':
+            print("🧠 No relevant memory surfaced - investigating uncharted territory!")
+        else:
+            print("🧠 Insufficient memory for smart surfacing - continue investigating to build context")
+        
+        return result
+    
+    def surface_for_entry(self, entry_type: str, content: str) -> List[Dict[str, Any]]:
+        """Surface memory relevant to a specific entry being created."""
+        relevant = self.surface.surface_for_entry_type(entry_type, content)
+        
+        if relevant:
+            print(f"🔗 CONTEXTUAL MEMORY ({len(relevant)} related findings):")
+            for finding in relevant:
+                entry = finding['entry']
+                similarity = finding['similarity']
+                reason = finding['relevance_reason']
+                
+                # Brief display
+                entry_id = entry.get('id', 'unknown')[:8]
+                entry_content = ""
+                if entry.get('type') == 'discovery':
+                    entry_content = entry.get('breakthrough', '')[:40]
+                elif entry.get('type') == 'insight':
+                    entry_content = entry.get('understanding', '')[:40]
+                elif entry.get('type') == 'observation':
+                    entry_content = entry.get('what', '')[:40]
+                
+                print(f"   📎 [{entry_id}] {entry_content}{'...' if len(entry_content) >= 40 else ''}")
+                print(f"      {reason} (similarity: {similarity:.0%})")
+        
+        return relevant
     
     def init(self):
         """Initialize Claude with full mnemos context and current status."""
