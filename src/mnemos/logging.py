@@ -164,6 +164,36 @@ class MnemosLogger:
         self._write_finding(finding)
         return finding
     
+    def search(self, term: str, search_type: str = None, limit: int = 10) -> list:
+        """Search investigation history for patterns and discoveries."""
+        if not self.log_file.exists():
+            return []
+        
+        results = []
+        with open(self.log_file, 'r') as f:
+            for line in f:
+                try:
+                    finding = json.loads(line.strip())
+                    
+                    # Type filtering
+                    if search_type and finding.get('type') != search_type:
+                        continue
+                    
+                    # Text search across all text fields
+                    searchable_text = []
+                    for key, value in finding.items():
+                        if isinstance(value, str) and key != 'id':
+                            searchable_text.append(value.lower())
+                    
+                    if any(term.lower() in text for text in searchable_text):
+                        results.append(finding)
+                        
+                except json.JSONDecodeError:
+                    continue
+        
+        # Return most recent first, limited
+        return results[-limit:] if results else []
+    
     def _write_finding(self, finding: Dict[str, Any]) -> None:
         """Write finding to log file."""
         with open(self.log_file, 'a') as f:

@@ -163,6 +163,25 @@ def main():
     elif command in ['?', 'next', 'suggest']:
         show_suggestions(mnemos)
         
+    elif command in ['search', 'find', 'query']:
+        if len(sys.argv) < 3:
+            print("Usage: mnemos search <term> [--type TYPE] [--limit N]")
+            return
+        
+        search_term = sys.argv[2]
+        search_type = None
+        limit = 10
+        
+        # Parse optional flags
+        for i, arg in enumerate(sys.argv[3:], start=3):
+            if arg == '--type' and i + 1 < len(sys.argv):
+                search_type = sys.argv[i + 1]
+            elif arg == '--limit' and i + 1 < len(sys.argv):
+                limit = int(sys.argv[i + 1])
+        
+        results = mnemos.search(search_term, search_type, limit)
+        show_search_results(results, search_term)
+        
     elif command in ['init']:
         init_message = mnemos.init()
         print(init_message)

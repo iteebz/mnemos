@@ -21,6 +21,7 @@ from typing import Dict, Any
 from .logging import MnemosLogger  
 from .analysis import MnemosAnalyzer
 from .compression import MnemosCompressor
+from .patterns import BehavioralPatterns
 from .protocols import PROTOCOL, METHODOLOGY, BOUNDARIES, INIT_MESSAGE
 
 
@@ -29,16 +30,37 @@ class Mnemos:
     
     def __init__(self):
         # Unified investigation memory for polyrepo monoworkspaces
-        mnemos_home = os.environ.get('MNEMOS_HOME', '.mnemos')
-        self.mnemos_dir = Path(mnemos_home)
-        self.log_file = self.mnemos_dir / "mnemos.jsonl"
-        self.reflection_file = self.mnemos_dir / "reflections.jsonl"
+        if 'MNEMOS_HOME' in os.environ:
+            self.mnemos_dir = Path(os.environ['MNEMOS_HOME'])
+            self.project_name = 'custom'
+        else:
+            mnemos_root, project_name = self._find_mnemos_root()
+            self.mnemos_dir = Path(mnemos_root)
+            self.project_name = project_name
+            
+        self.log_file = self.mnemos_dir / f"{self.project_name}.jsonl"
+        self.reflection_file = self.mnemos_dir / f"{self.project_name}_reflections.jsonl"
         self.mnemos_dir.mkdir(parents=True, exist_ok=True)
         
         # Modular components
         self.logger = MnemosLogger(self.log_file)
         self.analyzer = MnemosAnalyzer(self.log_file, self.reflection_file)
         self.compressor = MnemosCompressor(self.log_file)
+        self.patterns = BehavioralPatterns(self.log_file)
+    
+    def _find_mnemos_root(self):
+        """Git-linked memory: .mnemos alongside .git for natural project boundaries"""
+        current = Path.cwd()
+        
+        # Search upward for .git directory
+        for parent in [current] + list(current.parents):
+            if (parent / '.git').exists():
+                # Create .mnemos alongside .git
+                mnemos_dir = parent / '.mnemos'
+                return str(mnemos_dir), 'memory'
+        
+        # Fallback to user home if no git repo found
+        return str(Path.home() / '.mnemos'), 'global'
     
     # Delegate to modular components
     def observation(self, what: str, context: str = ""):
@@ -105,6 +127,50 @@ class Mnemos:
     def boundaries(self):
         """Return operational boundaries for autonomous work."""
         return BOUNDARIES
+    
+    def search(self, term: str, search_type: str = None, limit: int = 10, show_breadcrumbs: bool = True):
+        """Search investigation history with behavioral breadcrumbs."""
+        # Track this search for pattern analysis
+        self.patterns.track_search(term)
+        
+        # Get search results
+        results = self.logger.search(term, search_type, limit)
+        
+        if show_breadcrumbs and results:
+            # Show cognitive breadcrumbs
+            breadcrumbs = self.patterns.get_search_breadcrumbs(term)
+            if breadcrumbs:
+                print(f"🧭 Related searches: {', '.join(breadcrumbs)}")
+        
+        return results
+    
+    def investigation_patterns(self):
+        """Show Claude's investigation patterns and cognitive breadcrumbs."""
+        patterns = {
+            'flows': self.patterns.get_investigation_flows(),
+            'locations': self.patterns.get_location_clusters(),
+            'successful': self.patterns.get_successful_patterns()
+        }
+        
+        print("🧠 CLAUDE'S INVESTIGATION PATTERNS")
+        print("=" * 40)
+        
+        if patterns['flows']:
+            print("📈 Common Investigation Flows:")
+            for i, flow in enumerate(patterns['flows'], 1):
+                print(f"  {i}. {flow['pattern']} (used {flow['count']} times)")
+        
+        if patterns['locations']:
+            print("\n🗺️ Issue Hotspots:")
+            for loc in patterns['locations']:
+                print(f"  • {loc['location']}: {loc['issue_count']} issues")
+        
+        if patterns['successful']:
+            print("\n✅ Recent Successful Patterns:")
+            for pattern in patterns['successful'][-3:]:
+                print(f"  • {pattern['pattern']} → {pattern['outcome'].get('type', 'success')}")
+        
+        return patterns
     
     def init(self):
         """Initialize Claude with full mnemos context and current status."""
