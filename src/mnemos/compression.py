@@ -25,7 +25,7 @@ class MnemosCompressor:
         return findings[-limit:]  # Last N entries
     
     def compress_findings(self, keep_recent: int = 15) -> Dict[str, Any]:
-        """Semantic compression - preserve signal, compress noise."""
+        """Reversible semantic compression - preserve signal, compress noise with recovery."""
         findings = self.load_findings(1000)
         
         if len(findings) <= keep_recent:
@@ -44,15 +44,37 @@ class MnemosCompressor:
         # COMPRESS: Regular observations and resolved issues
         regular_findings = [f for f in old if f not in discoveries + patterns + principles + critical_issues]
         
-        # Semantic summary of compressed findings
+        # Create reversible compression archive
+        compression_id = int(time.time())
+        compressed_archive_path = self.log_file.with_name(f"compressed_{compression_id}.jsonl")
+        
+        # Store compressed findings with metadata for recovery
+        with open(compressed_archive_path, 'w') as f:
+            compression_metadata = {
+                "type": "compression_metadata",
+                "compression_id": compression_id,
+                "timestamp": time.strftime("%H:%M:%S"),
+                "compressed_count": len(regular_findings),
+                "compression_trigger": f"Compressed when memory exceeded {keep_recent + len(old)} entries",
+                "recovery_command": f"mnemos decompress {compression_id}"
+            }
+            f.write(json.dumps(compression_metadata) + '\n')
+            
+            for finding in regular_findings:
+                f.write(json.dumps(finding) + '\n')
+        
+        # Semantic summary with recovery pointer
         compressed_summary = self._create_semantic_summary(regular_findings, len(old))
+        compressed_summary["compression_id"] = compression_id
+        compressed_summary["compressed_archive"] = str(compressed_archive_path)
+        compressed_summary["recovery_note"] = f"Full details recoverable with: mnemos decompress {compression_id}"
         
         # Final memory: semantic summary + preserved findings + recent
         preserved = discoveries + patterns + principles + critical_issues
         compressed = [compressed_summary] + preserved + recent
         
-        # Backup and write
-        backup_path = self.log_file.with_suffix('.backup.jsonl')
+        # Backup original (keep for safety)
+        backup_path = self.log_file.with_suffix(f'.backup_{compression_id}.jsonl')
         backup_path.write_text(self.log_file.read_text())
         
         with open(self.log_file, 'w') as f:
@@ -60,12 +82,14 @@ class MnemosCompressor:
                 f.write(json.dumps(finding) + '\n')
         
         return {
-            "status": "semantic_compression",
+            "status": "reversible_compression",
             "original_count": len(findings),
             "compressed_count": len(compressed),
             "preserved_discoveries": len(discoveries),
             "preserved_patterns": len(patterns + principles),
             "compressed_routine": len(regular_findings),
+            "compression_id": compression_id,
+            "compressed_archive": str(compressed_archive_path),
             "backup_created": str(backup_path)
         }
     
@@ -204,3 +228,97 @@ class MnemosCompressor:
             "remaining_count": len(remaining_findings),
             "backup_file": str(backup_path)
         }
+    
+    def decompress_findings(self, compression_id: int) -> Dict[str, Any]:
+        """Recover compressed findings by compression ID - reversible compression."""
+        # Find the compressed archive
+        compressed_archive_path = self.log_file.with_name(f"compressed_{compression_id}.jsonl")
+        
+        if not compressed_archive_path.exists():
+            return {"status": "archive_not_found", "compression_id": compression_id}
+        
+        # Load compressed findings
+        compressed_findings = []
+        metadata = None
+        
+        with open(compressed_archive_path) as f:
+            for line in f:
+                if line.strip():
+                    finding = json.loads(line)
+                    if finding.get("type") == "compression_metadata":
+                        metadata = finding
+                    else:
+                        compressed_findings.append(finding)
+        
+        if not metadata:
+            return {"status": "invalid_archive", "compression_id": compression_id}
+        
+        # Load current memory
+        current_findings = self.load_findings(1000)
+        
+        # Find and remove the semantic summary for this compression
+        updated_findings = []
+        summary_removed = False
+        
+        for finding in current_findings:
+            if (finding.get("type") == "semantic_summary" and 
+                finding.get("compression_id") == compression_id):
+                summary_removed = True
+                continue
+            updated_findings.append(finding)
+        
+        if not summary_removed:
+            return {"status": "summary_not_found", "compression_id": compression_id}
+        
+        # Insert compressed findings back in chronological order
+        # This is simplified - in production would need proper timestamp sorting
+        final_findings = compressed_findings + updated_findings
+        
+        # Create backup before decompression
+        backup_path = self.log_file.with_suffix(f'.pre_decompress_{compression_id}.jsonl')
+        backup_path.write_text(self.log_file.read_text())
+        
+        # Write expanded memory
+        with open(self.log_file, 'w') as f:
+            for finding in final_findings:
+                f.write(json.dumps(finding) + '\n')
+        
+        # Archive the compression file (keep for audit trail)
+        archived_compression = compressed_archive_path.with_suffix('.archived.jsonl')
+        compressed_archive_path.rename(archived_compression)
+        
+        return {
+            "status": "decompressed",
+            "compression_id": compression_id,
+            "recovered_count": len(compressed_findings),
+            "total_count": len(final_findings),
+            "backup_created": str(backup_path),
+            "compressed_archive_moved": str(archived_compression)
+        }
+    
+    def list_compressions(self) -> List[Dict[str, Any]]:
+        """List all available compression archives for recovery."""
+        compressions = []
+        
+        # Find all compressed_*.jsonl files
+        parent_dir = self.log_file.parent
+        for file_path in parent_dir.glob("compressed_*.jsonl"):
+            try:
+                compression_id = int(file_path.stem.split('_')[1])
+                
+                # Read metadata
+                with open(file_path) as f:
+                    first_line = f.readline()
+                    if first_line:
+                        metadata = json.loads(first_line)
+                        if metadata.get("type") == "compression_metadata":
+                            compressions.append({
+                                "compression_id": compression_id,
+                                "timestamp": metadata.get("timestamp"),
+                                "compressed_count": metadata.get("compressed_count"),
+                                "archive_path": str(file_path)
+                            })
+            except (ValueError, json.JSONDecodeError):
+                continue
+        
+        return sorted(compressions, key=lambda x: x["compression_id"], reverse=True)

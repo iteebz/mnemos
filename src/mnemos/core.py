@@ -22,6 +22,7 @@ from typing import Dict, Any
 from .logging import MnemosLogger  
 from .analysis import MnemosAnalyzer
 from .compression import MnemosCompressor
+from .memory_manager import AutoCompressionIntegration
 from .patterns import BehavioralPatterns
 from .protocols import PROTOCOL, METHODOLOGY, BOUNDARIES, INIT_MESSAGE
 
@@ -47,6 +48,7 @@ class Mnemos:
         self.logger = MnemosLogger(self.log_file)
         self.analyzer = MnemosAnalyzer(self.log_file, self.reflection_file)
         self.compressor = MnemosCompressor(self.log_file)
+        self.memory_manager = AutoCompressionIntegration(self.log_file, self.compressor)
         self.patterns = BehavioralPatterns(self.log_file)
     
     def _find_mnemos_root(self):
@@ -66,55 +68,86 @@ class Mnemos:
         print("   Navigate to a git repository or run 'git init' to create one")
         sys.exit(1)
     
-    # Delegate to modular components
+    def _post_write_hook(self):
+        """Invisible auto-compression after memory writes - biological memory management."""
+        try:
+            result = self.memory_manager.post_write_hook()
+            if result and result.get("auto_compression") and result.get("status") == "reversible_compression":
+                # Subtle notification - don't interrupt flow
+                print(f"🧠 Memory consolidated: {result['original_count']} → {result['compressed_count']} entries")
+        except Exception:
+            # Silent failure - don't break user flow
+            pass
+    
+    # Delegate to modular components with auto-compression
     def observation(self, what: str, context: str = ""):
         """Log raw findings - what you see."""
-        return self.logger.observation(what, context)
+        result = self.logger.observation(what, context)
+        self._post_write_hook()
+        return result
     
     def discovery(self, breakthrough: str, impact: str, solution: str = ""):
         """Log major discoveries that change everything."""
-        return self.logger.discovery(breakthrough, impact, solution)
+        result = self.logger.discovery(breakthrough, impact, solution)
+        self._post_write_hook()
+        return result
     
     def insight(self, understanding: str, evidence: str = ""):
         """Log analyzed understanding - what observations mean."""
-        return self.logger.insight(understanding, evidence)
+        result = self.logger.insight(understanding, evidence)
+        self._post_write_hook()
+        return result
     
     def issue(self, problem: str, location: str, severity: str = "medium"):
         """Log discovered issues."""
-        return self.logger.issue(problem, location, severity)
+        result = self.logger.issue(problem, location, severity)
+        self._post_write_hook()
+        return result
     
     def resolve(self, issue_id: str, solution: str):
         """Resolve an existing issue by ID."""
-        return self.logger.resolve(issue_id, solution)
+        result = self.logger.resolve(issue_id, solution)
+        self._post_write_hook()
+        return result
     
     def consideration(self, idea: str, context: str = ""):
         """Log future considerations - ideas to evaluate later, not actionable tasks."""
-        return self.logger.consideration(idea, context)
+        result = self.logger.consideration(idea, context)
+        self._post_write_hook()
+        return result
     
     # Strategic memory methods
     def pattern(self, insight: str, value: str):
         """Log architectural patterns that persist across projects."""
-        return self.logger.pattern(insight, value)
+        result = self.logger.pattern(insight, value)
+        self._post_write_hook()
+        return result
     
     def principle(self, rule: str, rationale: str):
         """Log design principles and rules."""
-        return self.logger.principle(rule, rationale)
+        result = self.logger.principle(rule, rationale)
+        self._post_write_hook()
+        return result
     
     def antipattern(self, problem: str, why_bad: str):
         """Log things to avoid and why."""
-        return self.logger.antipattern(problem, why_bad)
+        result = self.logger.antipattern(problem, why_bad)
+        self._post_write_hook()
+        return result
     
     def thread(self, name: str, status: str = "active"):
         """Track investigation threads."""
-        return self.logger.thread(name, status)
+        result = self.logger.thread(name, status)
+        self._post_write_hook()
+        return result
     
     def meta_reflect(self, trigger_count: int = 10):
         """Delegate to analyzer."""
         return self.analyzer.meta_reflect(trigger_count)
     
     def compress_findings(self, keep_recent: int = 15):
-        """Delegate to compressor."""
-        return self.compressor.compress_findings(keep_recent)
+        """Manual compression using biological memory system."""
+        return self.memory_manager.manual_compress(keep_recent)
     
     def archive_findings(self, archive_filter: str = None, older_than_hours: int = None):
         """Archive irrelevant findings permanently - beyond compression."""
@@ -123,6 +156,18 @@ class Mnemos:
     def delete_findings(self, delete_filter: str = None, entry_ids: list = None):
         """Permanently delete specific findings - use with caution.""" 
         return self.compressor.delete_findings(delete_filter, entry_ids)
+
+    def decompress_findings(self, compression_id: int):
+        """Recover compressed findings by ID - reversible compression."""
+        return self.compressor.decompress_findings(compression_id)
+    
+    def list_compressions(self):
+        """List available compression archives for recovery."""
+        return self.compressor.list_compressions()
+    
+    def memory_health(self):
+        """Get biological memory system health status."""
+        return self.memory_manager.memory_status()
 
     def undo(self):
         """Delegate to logger."""

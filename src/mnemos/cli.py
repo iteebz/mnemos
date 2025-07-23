@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """Beautiful CLI interface for mnemos - Claude-optimized investigation commands."""
 
+# DEPRECATED: This file is being migrated to modular CLI components
+# New implementation: src/mnemos/cli/
+
 import sys
 import argparse
 from pathlib import Path
@@ -158,7 +161,13 @@ def main():
         
     elif command in ['compress']:
         result = mnemos.compress_findings()
-        if result['status'] == 'semantic_compression':
+        if result['status'] == 'reversible_compression':
+            print(f"🗜️  Reversible compression complete:")
+            print(f"   Preserved: {result['preserved_discoveries']} discoveries, {result['preserved_patterns']} patterns")
+            print(f"   Compressed: {result['compressed_routine']} routine findings")
+            print(f"   Total: {result['original_count']} → {result['compressed_count']} entries")
+            print(f"   Recovery: mnemos decompress {result['compression_id']}")
+        elif result['status'] == 'semantic_compression':
             print(f"🗜️  Semantic compression complete:")
             print(f"   Preserved: {result['preserved_discoveries']} discoveries, {result['preserved_patterns']} patterns")
             print(f"   Compressed: {result['compressed_routine']} routine findings")
@@ -212,6 +221,58 @@ def main():
             print(f"   Backup: {result['backup_file']}")
         else:
             print(f"🗑️  {result['status']}: {result.get('count', 0)} findings")
+    
+    elif command in ['decompress', 'recover']:
+        if len(sys.argv) < 3:
+            print("Usage: mnemos decompress <compression_id>")
+            print("       mnemos list-compressions  # Show available archives")
+            return
+        
+        try:
+            compression_id = int(sys.argv[2])
+            result = mnemos.decompress_findings(compression_id)
+            
+            if result['status'] == 'decompressed':
+                print(f"📈 Decompression complete:")
+                print(f"   Recovered: {result['recovered_count']} findings")
+                print(f"   Total memory: {result['total_count']} entries")
+                print(f"   Backup: {result['backup_created']}")
+            else:
+                print(f"📈 {result['status']}: compression_id {result.get('compression_id', 'unknown')}")
+        except ValueError:
+            print("❌ Invalid compression ID - must be a number")
+    
+    elif command in ['list-compressions', 'compressions']:
+        compressions = mnemos.list_compressions()
+        if not compressions:
+            print("📦 No compression archives found")
+        else:
+            print(f"📦 COMPRESSION ARCHIVES ({len(compressions)} available)")
+            print("=" * 50)
+            for comp in compressions:
+                print(f"  ID: {comp['compression_id']} | {comp['timestamp']} | {comp['compressed_count']} findings")
+                print(f"      Recovery: mnemos decompress {comp['compression_id']}")
+                print()
+    
+    elif command in ['health', 'memory-health']:
+        health = mnemos.memory_health()
+        state = health['memory_state']
+        rec = health['compression_recommendation']
+        
+        print(f"🧠 BIOLOGICAL MEMORY HEALTH")
+        print("=" * 30)
+        print(f"📊 Status: {health['health'].upper()}")
+        print(f"📈 Entries: {state['total_entries']} ({state['pressure_level']} pressure)")
+        print(f"🎯 Discoveries: {state['discoveries']}")
+        print(f"🏗️  Patterns: {state['patterns']}")
+        print(f"🐛 Open Issues: {state['unresolved_issues']}")
+        print()
+        
+        if rec['should_compress']:
+            print(f"💡 RECOMMENDATION: {rec['trigger_description']}")
+            print(f"   Command: mnemos compress  # Will keep {rec['keep_recent']} recent entries")
+        else:
+            print(f"✅ No compression needed - memory pressure within healthy limits")
         
     elif command in ['?', 'next', 'suggest']:
         show_suggestions(mnemos)
@@ -396,7 +457,10 @@ def show_help():
     print()
     print("MEMORY MANAGEMENT:")
     print("  mnemos reflect             Run meta-analysis")
-    print("  mnemos compress            Semantic compression")
+    print("  mnemos compress            Reversible semantic compression")
+    print("  mnemos decompress <id>     Recover compressed findings")
+    print("  mnemos list-compressions   Show available compression archives")
+    print("  mnemos health              Show biological memory system status")
     print("  mnemos archive <filter>    Archive irrelevant findings")
     print("  mnemos delete <filter>     Permanently delete findings (⚠️ caution)")
     print()
