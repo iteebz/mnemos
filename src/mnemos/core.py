@@ -58,8 +58,12 @@ class Mnemos:
         return self.logger.issue(problem, location, severity)
     
     def resolve(self, issue_id: str, solution: str):
-        """Mark issue as resolved with explicit ID linking."""
+        """Resolve an existing issue by ID."""
         return self.logger.resolve(issue_id, solution)
+    
+    def consideration(self, idea: str, context: str = ""):
+        """Log future considerations - ideas to evaluate later, not actionable tasks."""
+        return self.logger.consideration(idea, context)
     
     # Strategic memory methods
     def pattern(self, insight: str, value: str):

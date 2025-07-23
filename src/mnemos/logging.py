@@ -137,6 +137,21 @@ class MnemosLogger:
         print(f"🚫 ANTIPATTERN: {problem}")
         return antipattern_id
     
+    def consideration(self, idea: str, context: str = "") -> str:
+        """Log future considerations - ideas to evaluate later, not actionable tasks."""
+        consideration_id = str(uuid.uuid4())[:8]
+        finding = {
+            "id": consideration_id,
+            "timestamp": time.strftime("%H:%M:%S"),
+            "idea": idea,
+            "context": context,
+            "type": "consideration"
+        }
+        
+        self._write_finding(finding)
+        print(f"💭 CONSIDERATION: {idea}")
+        return consideration_id
+    
     def thread(self, name: str, status: str = "active") -> Dict[str, Any]:
         """Track investigation threads - what you're currently digging into."""
         finding = {

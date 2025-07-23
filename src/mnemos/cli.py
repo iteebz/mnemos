@@ -8,6 +8,46 @@ from pathlib import Path
 from .core import Mnemos
 
 
+def process_chained_commands(mnemos, chain_args):
+    """Process chained commands like 'o:observation' 'i:insight' 'd:discovery'."""
+    results = []
+    
+    for arg in chain_args:
+        if ':' not in arg:
+            continue
+            
+        cmd_type, content = arg.split(':', 1)
+        cmd_type = cmd_type.lower()
+        
+        if cmd_type in ['o', 'obs', 'observation']:
+            result_id = mnemos.observation(content)
+            results.append(f"👁️  {result_id}")
+        elif cmd_type in ['i', 'insight']:
+            result_id = mnemos.insight(content)
+            results.append(f"💡 {result_id}")
+        elif cmd_type in ['d', 'discovery']:
+            result_id = mnemos.discovery(content, "")
+            results.append(f"🎯 {result_id}")
+        elif cmd_type in ['x', 'issue']:
+            result_id = mnemos.issue(content, "unknown")
+            results.append(f"🐛 {result_id}")
+        elif cmd_type in ['c', 'consideration']:
+            result_id = mnemos.consideration(content)
+            results.append(f"💭 {result_id}")
+        elif cmd_type == 'pattern':
+            result_id = mnemos.pattern(content, "")
+            results.append(f"🏗️  {result_id}")
+        elif cmd_type == 'principle':
+            result_id = mnemos.principle(content, "")
+            results.append(f"📏 {result_id}")
+        elif cmd_type == 'antipattern':
+            result_id = mnemos.antipattern(content, "")
+            results.append(f"🚫 {result_id}")
+    
+    if results:
+        print(f"⚡ CHAINED: {' → '.join(results)}")
+
+
 def main():
     """Claude-friendly mnemos CLI interface."""
     if len(sys.argv) < 2:
@@ -19,8 +59,14 @@ def main():
     if verbose:
         sys.argv = [arg for arg in sys.argv if arg not in ['--verbose', '-v']]
     
-    command = sys.argv[1].lower() if len(sys.argv) > 1 else ""
     mnemos = Mnemos()
+    
+    # Handle chained commands: mnemos 'o:observation' 'i:insight' 'd:discovery'
+    if len(sys.argv) > 1 and ':' in sys.argv[1]:
+        process_chained_commands(mnemos, sys.argv[1:])
+        return
+    
+    command = sys.argv[1].lower() if len(sys.argv) > 1 else ""
     
     if verbose:
         import os
@@ -80,6 +126,11 @@ def main():
         result_id = mnemos.antipattern(problem, why_bad)
         print(f"Logged antipattern: {result_id}")
     
+    elif command in ['c', 'consider', 'consideration']:
+        idea = ' '.join(sys.argv[2:]) if len(sys.argv) > 2 else input("Consideration: ")
+        result_id = mnemos.consideration(idea)
+        print(f"Logged consideration: {result_id}")
+    
     # Investigation management
     elif command in ['thread', 'start']:
         name = ' '.join(sys.argv[2:]) if len(sys.argv) > 2 else input("Thread name: ")
@@ -93,13 +144,7 @@ def main():
         print(f"Completed thread: {name}")
         
     elif command in ['status', 'summary']:
-        summary = mnemos.summarize()
-        print("\n🤖 MNEMOS STATUS")
-        print("=" * 30)
-        print(f"Recent discoveries: {summary.get('recent_discoveries', 0)}")
-        print(f"Recent issues: {summary.get('recent_issues', 0)}")
-        if summary.get('active_threads'):
-            print(f"Active threads: {', '.join(summary['active_threads'])}")
+        show_rich_summary(mnemos)
         
     elif command in ['reflect', 'meta']:
         reflection = mnemos.meta_reflect()
@@ -126,10 +171,74 @@ def main():
         show_help()
 
 
+def show_rich_summary(mnemos):
+    """Show semantically rich investigation overview for fresh Claude instances."""
+    import json
+    from pathlib import Path
+    
+    # Read raw memory for rich context
+    log_file = Path(mnemos.log_file)
+    if not log_file.exists():
+        print("🤖 MNEMOS - No investigation memory found")
+        return
+    
+    entries = []
+    with open(log_file) as f:
+        for line in f:
+            if line.strip():
+                entries.append(json.loads(line))
+    
+    # Get recent entries (last 10)
+    recent = entries[-10:] if len(entries) > 10 else entries
+    
+    print("\\n🧠 MNEMOS INVESTIGATION OVERVIEW")
+    print("=" * 45)
+    print(f"📊 Total memory: {len(entries)} entries")
+    
+    # Recent discoveries with content
+    discoveries = [e for e in recent if e.get('type') == 'discovery']
+    if discoveries:
+        print("\\n🎯 RECENT DISCOVERIES:")
+        for d in discoveries[-3:]:
+            breakthrough = d.get('breakthrough', '')[:80]
+            print(f"   • {breakthrough}{'...' if len(d.get('breakthrough', '')) > 80 else ''}")
+    
+    # Active issues
+    issues = [e for e in entries if e.get('type') == 'issue']
+    resolved_ids = {e.get('issue_id') for e in entries if e.get('type') == 'resolved'}
+    active_issues = [i for i in issues if i.get('id') not in resolved_ids]
+    
+    if active_issues:
+        print("\\n🐛 ACTIVE ISSUES:")
+        for issue in active_issues[-3:]:
+            problem = issue.get('problem', '')[:60]
+            print(f"   • [{issue.get('id', 'unknown')}] {problem}")
+    
+    # Recent considerations (future ideas)
+    considerations = [e for e in recent if e.get('type') == 'consideration']
+    if considerations:
+        print("\\n💭 RECENT CONSIDERATIONS:")
+        for c in considerations[-3:]:
+            idea = c.get('idea', '')[:70]
+            print(f"   • {idea}{'...' if len(c.get('idea', '')) > 70 else ''}")
+    
+    # Investigation patterns
+    patterns = [e for e in entries if e.get('type') == 'pattern']
+    if patterns:
+        print(f"\\n🏗️  PATTERNS DISCOVERED: {len(patterns)}")
+        if patterns:
+            latest = patterns[-1]
+            insight = latest.get('insight', '')[:60]
+            print(f"   Latest: {insight}{'...' if len(latest.get('insight', '')) > 60 else ''}")
+    
+    print(f"\\n⚡ Investigation velocity: {len(recent)} entries recently")
+    print("\\n🎯 Ready for autonomous investigation!")
+
+
 def show_suggestions(mnemos):
     """Show investigation suggestions for Claude."""
     summary = mnemos.summarize()
-    print("\n🎯 INVESTIGATION SUGGESTIONS")
+    print("\\n🎯 INVESTIGATION SUGGESTIONS")
     print("=" * 35)
     
     count = 1
@@ -159,6 +268,7 @@ TACTICAL INVESTIGATION:
   mnemos d "discovery"       Log breakthrough
   mnemos x "problem"         Log issue/bug
   mnemos r <id> "solution"   Resolve issue
+  mnemos c "idea"            Future consideration
 
 STRATEGIC MEMORY:
   mnemos pattern "insight"   Architectural pattern
@@ -175,7 +285,7 @@ INVESTIGATION FLOW:
 
 ALIASES:
   o/obs = observation, i = insight, d = discovery
-  x = issue, r = resolve, ? = suggest
+  x = issue, r = resolve, c = consideration, ? = suggest
 
 FLAGS:
   --verbose, -v              Show memory locations
