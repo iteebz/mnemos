@@ -1,3 +1,4 @@
+
 """Mnemos unified logging - tactical, strategic, and operational findings."""
 
 import json
@@ -127,7 +128,7 @@ class MnemosLogger:
         antipattern_id = str(uuid.uuid4())[:8]
         finding = {
             "id": antipattern_id,
-            "timestamp": time.strftime("%H:%M:%S"),
+            "timestamp": time.strftime("%H:%M:%M"),
             "problem": problem,
             "why_bad": why_bad,
             "type": "antipattern"
@@ -198,3 +199,21 @@ class MnemosLogger:
         """Write finding to log file."""
         with open(self.log_file, 'a') as f:
             f.write(json.dumps(finding) + '\n')
+
+    def undo(self) -> bool:
+        """Remove the last finding from the log file."""
+        if not self.log_file.exists():
+            return False
+        
+        with open(self.log_file, "r+") as f:
+            lines = f.readlines()
+            if not lines:
+                return False
+            
+            # Move the pointer to the beginning of the last line
+            f.seek(0)
+            f.truncate()
+            f.writelines(lines[:-1])
+            
+        print("⏪ UNDO: Last entry removed.")
+        return True

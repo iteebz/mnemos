@@ -115,6 +115,18 @@ class Mnemos:
     def compress_findings(self, keep_recent: int = 15):
         """Delegate to compressor."""
         return self.compressor.compress_findings(keep_recent)
+    
+    def archive_findings(self, archive_filter: str = None, older_than_hours: int = None):
+        """Archive irrelevant findings permanently - beyond compression."""
+        return self.compressor.archive_findings(archive_filter, older_than_hours)
+    
+    def delete_findings(self, delete_filter: str = None, entry_ids: list = None):
+        """Permanently delete specific findings - use with caution.""" 
+        return self.compressor.delete_findings(delete_filter, entry_ids)
+
+    def undo(self):
+        """Delegate to logger."""
+        return self.logger.undo()
 
     def summarize(self):
         """Delegate to analyzer."""

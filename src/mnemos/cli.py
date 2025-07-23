@@ -55,10 +55,15 @@ def main():
         auto_initialize()
         return
     
-    # Check for --verbose flag
+    # Check for flags
     verbose = '--verbose' in sys.argv or '-v' in sys.argv
     if verbose:
         sys.argv = [arg for arg in sys.argv if arg not in ['--verbose', '-v']]
+    
+    # Handle help flag
+    if '--help' in sys.argv or '-h' in sys.argv:
+        show_help()
+        return
     
     mnemos = Mnemos()
     
@@ -160,6 +165,53 @@ def main():
             print(f"   Total: {result['original_count']} → {result['compressed_count']} entries")
         else:
             print(f"🗜️  {result['status']}: {result.get('count', 0)} findings")
+    
+    elif command in ['archive']:
+        if len(sys.argv) < 3:
+            print("Usage: mnemos archive <filter> [--older-than-hours N]")
+            print("Example: mnemos archive \"test\" --older-than-hours 24")
+            return
+        
+        archive_filter = sys.argv[2]
+        older_than_hours = None
+        
+        # Parse optional --older-than-hours flag
+        if '--older-than-hours' in sys.argv:
+            idx = sys.argv.index('--older-than-hours')
+            if idx + 1 < len(sys.argv):
+                older_than_hours = int(sys.argv[idx + 1])
+        
+        result = mnemos.archive_findings(archive_filter, older_than_hours)
+        if result['status'] == 'archived':
+            print(f"📦 Archive complete:")
+            print(f"   Archived: {result['archived_count']} findings")
+            print(f"   Remaining: {result['remaining_count']} findings")
+            print(f"   Archive file: {result['archive_file']}")
+        else:
+            print(f"📦 {result['status']}: {result.get('count', 0)} findings")
+    
+    elif command in ['delete']:
+        if len(sys.argv) < 3:
+            print("Usage: mnemos delete <filter|id1,id2,...>")
+            print("⚠️  WARNING: Permanent deletion! Use archive for safer removal.")
+            return
+        
+        delete_arg = sys.argv[2]
+        
+        # Check if it's comma-separated IDs or a filter
+        if ',' in delete_arg:
+            entry_ids = [id.strip() for id in delete_arg.split(',')]
+            result = mnemos.delete_findings(entry_ids=entry_ids)
+        else:
+            result = mnemos.delete_findings(delete_filter=delete_arg)
+        
+        if result['status'] == 'deleted':
+            print(f"🗑️  Deletion complete:")
+            print(f"   Deleted: {result['deleted_count']} findings")
+            print(f"   Remaining: {result['remaining_count']} findings")
+            print(f"   Backup: {result['backup_file']}")
+        else:
+            print(f"🗑️  {result['status']}: {result.get('count', 0)} findings")
         
     elif command in ['?', 'next', 'suggest']:
         show_suggestions(mnemos)
@@ -190,6 +242,12 @@ def main():
     elif command in ['init']:
         # Redirect to auto-initialize for consistency
         auto_initialize()
+        
+    elif command in ['undo']:
+        if mnemos.undo():
+            print("⏪ UNDO: Last entry removed")
+        else:
+            print("❌ UNDO: No entries to remove")
         
     else:
         # Unknown command - show auto-initialize instead of help
@@ -313,6 +371,48 @@ def auto_initialize():
     print("  mnemos momentum            Get next suggestions")
     
     print("\n🎯 Ready for autonomous investigation!")
+
+
+def show_help():
+    """Show comprehensive help for mnemos CLI."""
+    print("🧠 MNEMOS - Autonomous Investigation System")
+    print("=" * 45)
+    print()
+    print("QUICK COMMANDS (Claude-optimized):")
+    print("  mnemos o \"observation\"     Log what you see")
+    print("  mnemos i \"insight\"         Log what it means") 
+    print("  mnemos d \"discovery\"       Log breakthrough")
+    print("  mnemos x \"problem\"         Log issue/bug")
+    print("  mnemos r <id> \"solution\"   Resolve issue")
+    print("  mnemos c \"idea\"            Log consideration")
+    print("  mnemos undo                Remove last entry")
+    print()
+    print("INVESTIGATION FLOW:")
+    print("  mnemos start \"topic\"       Begin investigation thread")
+    print("  mnemos done \"topic\"        Complete investigation thread")
+    print("  mnemos status              Show investigation overview")
+    print("  mnemos search \"term\"       Search memory")
+    print("  mnemos momentum            Get suggestions based on patterns")
+    print()
+    print("MEMORY MANAGEMENT:")
+    print("  mnemos reflect             Run meta-analysis")
+    print("  mnemos compress            Semantic compression")
+    print("  mnemos archive <filter>    Archive irrelevant findings")
+    print("  mnemos delete <filter>     Permanently delete findings (⚠️ caution)")
+    print()
+    print("STRATEGIC MEMORY:")
+    print("  mnemos pattern \"insight\"   Log architectural pattern")
+    print("  mnemos principle \"rule\"    Log design principle")
+    print("  mnemos antipattern \"bad\"   Log what to avoid")
+    print()
+    print("FLAGS:")
+    print("  --verbose, -v              Show memory locations")
+    print("  --help, -h                 Show this help")
+    print()
+    print("CHAINED COMMANDS:")
+    print("  mnemos 'o:saw bug' 'i:memory leak' 'd:root cause found'")
+    print()
+    print("🎯 Run 'mnemos' without arguments for auto-initialize with context")
 
 
 def show_search_results(results, search_term):

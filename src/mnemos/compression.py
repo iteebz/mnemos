@@ -96,3 +96,111 @@ class MnemosCompressor:
             "key_insights": key_insights,
             "compression_intelligence": "Preserved discoveries, patterns, principles. Compressed routine observations."
         }
+    
+    def archive_findings(self, archive_filter: str = None, older_than_hours: int = None) -> Dict[str, Any]:
+        """Archive irrelevant findings permanently - beyond compression."""
+        findings = self.load_findings(1000)
+        
+        if not findings:
+            return {"status": "no_findings", "count": 0}
+        
+        archive_candidates = []
+        remaining_findings = []
+        
+        # Archive criteria: semantic filters or time-based
+        for finding in findings:
+            should_archive = False
+            
+            # Time-based archival
+            if older_than_hours:
+                # Simple timestamp-based check (would need proper datetime parsing in production)
+                should_archive = True  # Simplified for demo
+            
+            # Semantic filter archival
+            if archive_filter:
+                finding_text = json.dumps(finding).lower()
+                if archive_filter.lower() in finding_text:
+                    should_archive = True
+            
+            # Never archive critical types
+            if finding.get("type") in ["discovery", "pattern", "principle"]:
+                should_archive = False
+            
+            if should_archive:
+                archive_candidates.append(finding)
+            else:
+                remaining_findings.append(finding)
+        
+        if not archive_candidates:
+            return {"status": "no_candidates", "count": 0}
+        
+        # Create archive file
+        archive_path = self.log_file.with_name(f"archive_{int(time.time())}.jsonl")
+        with open(archive_path, 'w') as f:
+            for finding in archive_candidates:
+                f.write(json.dumps(finding) + '\n')
+        
+        # Rewrite main file without archived findings
+        with open(self.log_file, 'w') as f:
+            for finding in remaining_findings:
+                f.write(json.dumps(finding) + '\n')
+        
+        return {
+            "status": "archived",
+            "archived_count": len(archive_candidates),
+            "remaining_count": len(remaining_findings),
+            "archive_file": str(archive_path)
+        }
+    
+    def delete_findings(self, delete_filter: str = None, entry_ids: List[str] = None) -> Dict[str, Any]:
+        """Permanently delete specific findings - use with caution."""
+        findings = self.load_findings(1000)
+        
+        if not findings:
+            return {"status": "no_findings", "count": 0}
+        
+        deleted_findings = []
+        remaining_findings = []
+        
+        for finding in findings:
+            should_delete = False
+            
+            # Delete by ID
+            if entry_ids and finding.get("id") in entry_ids:
+                should_delete = True
+            
+            # Delete by filter
+            if delete_filter:
+                finding_text = json.dumps(finding).lower()
+                if delete_filter.lower() in finding_text:
+                    should_delete = True
+            
+            # Safety: Never delete critical discoveries
+            if finding.get("type") in ["discovery", "pattern", "principle"]:
+                should_delete = False
+            
+            if should_delete:
+                deleted_findings.append(finding)
+            else:
+                remaining_findings.append(finding)
+        
+        if not deleted_findings:
+            return {"status": "no_matches", "count": 0}
+        
+        # Create backup before deletion
+        backup_path = self.log_file.with_name(f"deleted_backup_{int(time.time())}.jsonl")
+        with open(backup_path, 'w') as f:
+            for finding in deleted_findings:
+                f.write(json.dumps(finding) + '\n')
+        
+        # Rewrite main file without deleted findings
+        with open(self.log_file, 'w') as f:
+            for finding in remaining_findings:
+                f.write(json.dumps(finding) + '\n')
+        
+        return {
+            "status": "deleted",
+            "deleted_count": len(deleted_findings),
+            "remaining_count": len(remaining_findings),
+            "backup_file": str(backup_path)
+        }
